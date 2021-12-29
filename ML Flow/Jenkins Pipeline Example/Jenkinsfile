@@ -1,0 +1,85 @@
+pipeline {
+    agent {
+        label 'mod-nonprod-LB'
+    }
+    environment {
+        /*--------------------------------
+        Common Build Environment Variables
+        --------------------------------*/
+        NEXUS_REGISTRY_BASE_URL = 'nexus-gss.uscis.dhs.gov:1337'
+        NEXUS_REGISTRY_CREDENTIAL_ID = 'docker-push'
+        SONARQUBE_URL = "http://10.179.136.58:9000/"
+        HTTP_PROXY = 'http://preproxy.uscis.dhs.gov:80'
+        HTTPS_PROXY = "${HTTP_PROXY}"
+        http_proxy = "${HTTP_PROXY}"
+        https_proxy = "${HTTP_PROXY}"
+        NO_PROXY = "${NO_PROXY}"+",.uscis.dhs.gov"
+        GIT_USER_EMAIL = "svc-vis-jenkins@uscis.dhs.gov"
+        GIT_REPOSITORY = [YOUR REPO HERE]
+        DOCKER_IMAGE_NAME = [YOUR IMAGE NAME HERE]
+        version =  "latest"
+    }
+
+    stages {
+        stage("Build mlflow") {
+            steps {
+                script {
+                    echo "========building mlflow========"
+                    sh """
+                    docker build -t ${DOCKER_IMAGE_NAME}:${version} .
+                    """
+                }
+            }
+        }
+        stage("QA mlflow") {
+            steps {
+                script {
+                    /* TWISTLOCK */
+                    echo "========running twistlock========"
+                    try {
+                        // scan image for vulnerabilities - currently broken, awaiting fix.
+                        prismaCloudScanImage(
+                            ca: '',
+                            cert: '',
+                            dockerAddress: 'unix:///var/run/docker.sock',
+                            image: "${DOCKER_IMAGE_NAME}*",
+                            key: '',
+                            logLevel: 'info',
+                            podmanPath: '',
+                            project: '',
+                            resultsFile: [YOUR JSON FILE HERE]
+                        )
+                    } catch(e) {
+                        echo "!!!!!!!!!!!! TwistLock Scan FAILED TO RUN !!!!!!!!!!!!!!"
+                    }
+                }
+            }
+        }
+        stage("Publish mlflow") {
+            steps {
+                script {
+                    echo "========publish image========"
+                    docker.withRegistry("https://"+"${NEXUS_REGISTRY_BASE_URL}", "${NEXUS_REGISTRY_CREDENTIAL_ID}") {
+                        image = docker.image("${DOCKER_IMAGE_NAME}:${version}")
+                        image.push()
+                        // Clean up image
+                        sh "docker rmi ${DOCKER_IMAGE_NAME}:${version}"
+                    }
+                }
+            }
+        }
+    }
+    post{
+        always{
+            echo "========always========"
+            cleanWs deleteDirs: true
+        }
+        success{
+            echo "========pipeline executed successfully ========"
+
+        }
+        failure{
+            echo "========pipeline execution failed========"
+        }
+    }
+}

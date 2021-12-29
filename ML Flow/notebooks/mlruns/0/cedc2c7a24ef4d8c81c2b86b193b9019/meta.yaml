@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/micintro/Desktop/CI_Challenge/CI6-Power-To%20The_Profile/ML%20Flow/notebooks/mlruns/0/cedc2c7a24ef4d8c81c2b86b193b9019/artifacts
+end_time: 1639092620121
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+name: ''
+run_id: cedc2c7a24ef4d8c81c2b86b193b9019
+run_uuid: cedc2c7a24ef4d8c81c2b86b193b9019
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1639092620106
+status: 3
+tags: []
+user_id: micintro
